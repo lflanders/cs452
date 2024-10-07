@@ -1,0 +1,55 @@
+{
+  "strategy": "single_domain_double_shot",
+  "prompt_prefix": "CREATE TABLE team (\n    team_id INTEGER PRIMARY KEY,\n    teamName VARCHAR(20) UNIQUE,\n    headCoach VARCHAR(30) NOT NULL\n);\n\nCREATE TABLE player (\n    player_id INTEGER PRIMARY KEY,\n    last_name VARCHAR(30) NOT NULL,\n    first_name VARCHAR(30) NOT NULL,\n    playerNum INTEGER,\n    position varchar(30),\n    team_id INTEGER NOT NULL,\n    FOREIGN KEY (team_id) REFERENCES team(team_id)\n);\n\nCREATE TABLE game (\n    game_id INTEGER PRIMARY KEY,\n    visitingTeam_id INTEGER NOT NULL,\n    homeTeam_id INTEGER NOT NULL,\n    location VARCHAR(30) NOT NULL,\n    FOREIGN KEY (homeTeam_id) REFERENCES team(team_id),\n    FOREIGN KEY (visitingTeam_id) REFERENCES team(team_id)\n);\n\nCREATE TABLE score (\n    game_id INTEGER NOT NULL,\n    winningTeam_id INTEGER NOT NULL,\n    finalScore INTEGER NOT NULL,\n    leadingScorer VARCHAR(50),\n    FOREIGN KEY (winningTeam_id) REFERENCES team(team_id),\n    FOREIGN KEY (leadingScorer) REFERENCES player(player_id), -- Corrected reference spelling\n    FOREIGN KEY (game_id) REFERENCES game(game_id), -- Corrected reference spelling\n    PRIMARY KEY (game_id) -- Corrected from 'game-id' to 'game_id'\n);\n Who is the leading scorer in the last game played? \nSELECT p.first_name, p.last_name, s.points FROM score s JOIN player p ON s.leading_scorer_id = p.player_id JOIN game g ON s.game_id = g.game_id ORDER BY s.points DESC LIMIT 1;\n Give me a sqlite select statement that answers the question. Only respond with sqlite syntax. If there is an error do not expalin it!",
+  "questionResults": [
+    {
+      "question": "How many teams are in the database?",
+      "sql": "SELECT COUNT(*) FROM team;",
+      "queryRawResponse": "[(6,)]",
+      "friendlyResponse": "There are 6 teams in the database.",
+      "error": "None"
+    },
+    {
+      "question": "What is the name of the head coach for BYU?",
+      "sql": "SELECT headCoach FROM team WHERE teamName = 'BYU';",
+      "queryRawResponse": "[('Sitake',)]",
+      "friendlyResponse": "The head coach for BYU is Sitake.",
+      "error": "None"
+    },
+    {
+      "question": "Who was the leading scorer in the game between Houston and TCU?",
+      "sql": "SELECT p.first_name, p.last_name\nFROM player p\nJOIN score s ON p.player_id = s.leadingScorer\nJOIN game g ON s.game_id = g.game_id\nJOIN team t ON g.visitingTeam_id = t.team_id\nJOIN team t2 ON g.homeTeam_id = t2.team_id\nWHERE (t.teamName = 'Houston' AND t2.teamName = 'TCU');",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "The leading scorer in the game between Houston and TCU was [Name of Leading Scorer].",
+      "error": "None"
+    },
+    {
+      "question": "What is the location of the game between OSU and BYU?",
+      "sql": "SELECT location FROM game WHERE homeTeam_id IN (SELECT team_id FROM team WHERE teamName = 'OSU') AND visitingTeam_id IN (SELECT team_id FROM team WHERE teamName = 'BYU');",
+      "queryRawResponse": "['LaVell']",
+      "friendlyResponse": "The game between OSU and BYU will be held at LaVell.",
+      "error": "None"
+    },
+    {
+      "question": "What was the final score of the game between Utah and BYU?",
+      "sql": "SELECT finalScore FROM game JOIN score ON game.game_id = score.game_id JOIN team ON game.visitingTeam_id = team.team_id WHERE team.teamName = 'Utah' OR team.teamName = 'BYU';",
+      "queryRawResponse": "[('24-14',)]",
+      "friendlyResponse": "The final score of the game between Utah and BYU was 24-14.",
+      "error": "None"
+    },
+    {
+      "question": "What position does Darius Lassiter play on his team?",
+      "sql": "SELECT position\nFROM player\nWHERE first_name = 'Darius'\nAND last_name = 'Lassiter';",
+      "queryRawResponse": "[('Wide Receiver',)]",
+      "friendlyResponse": "Darius Lassiter plays as a Wide Receiver on his team.",
+      "error": "None"
+    },
+    {
+      "question": "List the teams in the database ordered by how many games they won, going from most to least and displaying the number of wins.",
+      "sql": "SELECT t.teamName, COUNT(s.winningTeam_id) AS wins \nFROM team t \nLEFT JOIN score s ON t.team_id = s.winningTeam_id \nGROUP BY t.team_id \nORDER BY wins DESC;",
+      "queryRawResponse": "[('BYU', 3), ('UTAH', 1), ('OSU', 1), ('KANSAS', 1), ('TCU', 1), ('HOUSTON', 0)]",
+      "friendlyResponse": "Sure! Here are the teams ordered by number of wins, from most to least: BYU (3), UTAH (1), OSU (1), KANSAS (1), TCU (1), HOUSTON (0).",
+      "error": "None"
+    }
+  ]
+}
